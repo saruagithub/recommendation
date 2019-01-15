@@ -15,7 +15,7 @@ def UserSimilarity(ratings,movies_length,users_length):
 			movie_users.append(temp_ratings['UserID'].values)
 
 	# calculate co-rated items between users
-	user_user = np.zeros([users_length,users_length])
+	user_user = np.zeros([users_length,users_length])#user与user之间共同看过的电影
 	N_user = np.zeros([1,users_length])
 	for i in range(movies_length):
 		for user in movie_users[i]:
@@ -27,8 +27,6 @@ def UserSimilarity(ratings,movies_length,users_length):
 	# calculate finial similarity matrix W
 	print(np.dot(N_user.transpose(),N_user))
 	similarity_W = user_user / np.sqrt(np.dot(N_user.transpose(),N_user))
-	#where_are_nan = np.isnan(similarity_W)
-	#similarity_W[where_are_nan] = 0
 	return similarity_W,movie_users
 
 def Recommend(ratings,movie_users,similarity_W):
@@ -38,7 +36,7 @@ def Recommend(ratings,movie_users,similarity_W):
 	for u in range(similarity_W.shape[0]):
 		temp_similarW = similarity_W[u].copy() #注意深拷贝和浅拷贝
 		for k in range(K):
-			max_index = np.argmax(temp_similarW)
+			max_index = np.argmax(temp_similarW)#最相似的用户ID
 			similarity_Kuser[u][k] = max_index+1 #userID
 			temp_similarW[max_index] = 0.0 #方便计算下一个最大的相似用户
 
@@ -50,9 +48,9 @@ def Recommend(ratings,movie_users,similarity_W):
 		for k in range(K):
 			kuser_movies = ratings.loc[ratings['UserID']==similarity_Kuser[u][k]]
 			movies[k] = kuser_movies['MovieID'].values.tolist()
-		new_movies = set(movies[0] + movies[1] + movies[2]).difference(set(own_movies))
+		new_movies = set(movies[0] + movies[1] + movies[2]).difference(set(own_movies)) #3个最接近的用户看过而自己没有看过的电影
 
-		for movie in new_movies: #calculate the p(u,i)
+		for movie in new_movies: #calculate the p(u,i) for each movie
 			p = 0.0
 			for user in movie_users[movie-1]:
 				if user in similarity_Kuser[u]:
@@ -62,12 +60,15 @@ def Recommend(ratings,movie_users,similarity_W):
 	#p_recommend.sort_values('p_value', inplace=True)
 	return p_recommend
 
+def readdata(filename1,filename2,filename3):
+	users = pd.read_table(filename1, sep='::', names=['UserID', 'Gender', 'Age', 'Occupation', 'Zip-code'],engine='python')
+	ratings = pd.read_table(filename2, sep='::', names=['UserID', 'MovieID', 'Rating', 'Timestamp'],engine='python')
+	movies = pd.read_table(filename3, sep='::', names=['MovieID', 'Title', 'Genres'], engine='python')
+	return users,ratings,movies
 
 def main():
 	#read MovieLens 1M data
-	users = pd.read_table('ml-1m/'+'users.dat',sep = '::', names = ['UserID','Gender','Age','Occupation','Zip-code'],engine='python')
-	ratings = pd.read_table('ml-1m/'+'ratings.dat',sep = '::', names = ['UserID','MovieID','Rating','Timestamp'],engine='python')
-	movies = pd.read_table('ml-1m/'+'movies.dat',sep = '::',names=['MovieID','Title','Genres'],engine='python')
+	users,ratings,movies = readdata('ml-1m/users.dat','ml-1m/' + 'ratings.dat','ml-1m/' + 'movies.dat')
 	movies_length = movies.shape[0]
 	users_length = users.shape[0]
 
